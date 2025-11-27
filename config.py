@@ -5,20 +5,31 @@ Pas deze waarden aan voor jouw specifieke toernooi
 
 # ===== TOERNOOI INSTELLINGEN =====
 
+# Aantal tafels beschikbaar (4-10)
+NUM_TABLES = 6
+
+# Aantal jury rooms beschikbaar (4-10)
+NUM_JURY_ROOMS = 7
+
 # Aantal teams (10-40)
 NUM_TEAMS = 40
 
-# Aantal tafels beschikbaar (4-10)
-NUM_TABLES = 4
-
-# Aantal jury rooms beschikbaar (4-10)
-NUM_JURY_ROOMS = 8
-
-# Aantal tijdsloten (auto-berekend of handmatig instellen)
-NUM_TIMESLOTS = 30  # Verhoog dit als er geen oplossing gevonden wordt
-
 # Aantal wedstrijden per team (standaard 4 voor FLL)
 MATCHES_PER_TEAM = 4
+
+# Duur van een wedstrijd in minuten
+MATCH_DURATION = 7
+
+# Duur van een jury sessie in minuten
+JURY_DURATION = 42
+
+
+# Minimale buffer tijd tussen activiteiten in minuten
+MINIMUM_BUFFER_TIME = 30
+
+
+# Aantal tijdsloten (auto-berekend of handmatig instellen)
+NUM_TIMESLOTS = 40  # Verhoog dit als er geen oplossing gevonden wordt
 
 # Aantal jury sessies per team (standaard 1)
 JURY_SESSIONS_PER_TEAM = 1
@@ -29,14 +40,6 @@ MIN_GAP_BETWEEN_ACTIVITIES = 4  # Minimum buffer time in timeslots
 
 # ===== TIMING INSTELLINGEN =====
 
-# Duur van een wedstrijd in minuten
-MATCH_DURATION = 7
-
-# Duur van een jury sessie in minuten
-JURY_DURATION = 42
-
-# Minimale buffer tijd tussen activiteiten in minuten
-MINIMUM_BUFFER_TIME = 30
 
 # Start tijd van het toernooi
 START_TIME = "09:30"

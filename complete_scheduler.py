@@ -110,6 +110,23 @@ def create_complete_schedule():
     for ts in all_jury_timeslots:
         for jury_room in all_jury_rooms:
             model.add_at_most_one(jury_sessions[(team, ts, jury_room)] for team in all_teams)
+    
+    # 5b. BELANGRIJK: Voorkom overlappende jury sessies in dezelfde room
+    # Een jury op tijdslot J beslaat tijdsloten J t/m J+5 (42 min = 6 tijdsloten van 7 min)
+    jury_duration_in_slots = (JURY_DURATION + MATCH_DURATION - 1) // MATCH_DURATION
+    
+    for jury_room in all_jury_rooms:
+        for ts1 in all_jury_timeslots:
+            for ts2 in range(ts1 + 1, min(ts1 + jury_duration_in_slots, NUM_TIMESLOTS)):
+                # Als er een jury sessie start op ts1, mag er geen sessie starten op ts2
+                # omdat deze zou overlappen (ts1 loopt tot ts1+6, ts2 start voor die tijd)
+                for team1 in all_teams:
+                    for team2 in all_teams:
+                        if team1 != team2:  # Verschillende teams
+                            model.add(
+                                jury_sessions[(team1, ts1, jury_room)] + 
+                                jury_sessions[(team2, ts2, jury_room)] <= 1
+                            )
 
     # 6. Een team kan maar in 1 jury room per tijdslot zijn
     for team in all_teams:
@@ -118,31 +135,64 @@ def create_complete_schedule():
 
     # ===== CONSTRAINTS VOOR OVERLAP EN BUFFER =====
     
-    # 7. Een team kan niet tegelijk een match EN jury sessie hebben
-    # Match duurt MATCH_DURATION, jury duurt JURY_DURATION
-    # We moeten kijken naar overlappende tijden
+    # 7. Voorkom overlap tussen matches en jury sessies
+    # BEIDE gebruiken nu dezelfde tijdschaal: tijdslot * MATCH_DURATION
+    # Match op tijdslot M: start = M*7, eind = M*7+7 (7 min)
+    # Jury op tijdslot J: start = J*7, eind = J*7+42 (42 min, dus 6 tijdsloten lang)
     
-    # Bereken min buffer in termen van tijdsloten
-    min_buffer_timeslots = max(1, MINIMUM_BUFFER_TIME // MATCH_DURATION)
+    print("   └─ Overlap preventie...")
     
-    # 8. Team kan niet in hetzelfde tijdslot een match en jury hebben
+    # Een jury sessie op tijdslot J beslaat tijdsloten J t/m J+5 (6 tijdsloten)
+    jury_duration_in_slots = (JURY_DURATION + MATCH_DURATION - 1) // MATCH_DURATION  # 6 tijdsloten
+    
     for team in all_teams:
-        for ts in range(min(NUM_TIMESLOTS, len(all_match_timeslots), len(all_jury_timeslots))):
-            # In elk tijdslot: ofwel match, ofwel jury, ofwel niets
-            has_match = sum(matches[(team, ts, tb)] for tb in all_tables)
-            has_jury = sum(jury_sessions[(team, ts, jr)] for jr in all_jury_rooms)
-            model.add(has_match + has_jury <= 1)
+        for jury_ts in all_jury_timeslots:
+            # Als team jury heeft op tijdslot jury_ts, dan beslaat dit tijdsloten jury_ts t/m jury_ts+5
+            jury_start_slot = jury_ts
+            jury_end_slot = jury_ts + jury_duration_in_slots - 1
+            
+            # Team mag geen matches hebben in deze range + buffer
+            buffer_in_slots = (MINIMUM_BUFFER_TIME + MATCH_DURATION - 1) // MATCH_DURATION
+            
+            for match_ts in all_match_timeslots:
+                # Check of match overlapt met jury + buffer
+                # Match overlapt als: match_ts is tussen (jury_start_slot - buffer) en (jury_end_slot + buffer)
+                if (jury_start_slot - buffer_in_slots <= match_ts <= jury_end_slot + buffer_in_slots):
+                    has_jury = sum(jury_sessions[(team, jury_ts, jr)] for jr in all_jury_rooms)
+                    has_match = sum(matches[(team, match_ts, tb)] for tb in all_tables)
+                    model.add(has_jury + has_match <= 1)
     
-    # 9. Buffer tijd tussen activiteiten van hetzelfde team
+    # 8. Buffer tijd tussen opeenvolgende matches
+    print("   └─ Match spacing...")
+    # We hebben minstens MINIMUM_BUFFER_TIME nodig TUSSEN twee matches
+    # Als match 1 eindigt op tijd T, dan moet match 2 starten op T + MINIMUM_BUFFER_TIME
+    # In termen van tijdsloten: als match op ts1, dan match 2 op ts2
+    # waarbij (ts2 * MATCH_DURATION) >= (ts1 * MATCH_DURATION + MATCH_DURATION + MINIMUM_BUFFER_TIME)
+    # ts2 >= ts1 + 1 + (MINIMUM_BUFFER_TIME / MATCH_DURATION)
+    min_match_gap = 1 + ((MINIMUM_BUFFER_TIME + MATCH_DURATION - 1) // MATCH_DURATION)
+    
+    print(f"      Min. gap tussen matches: {min_match_gap} tijdsloten ({min_match_gap * MATCH_DURATION} min)")
+    
     for team in all_teams:
-        for ts in range(NUM_TIMESLOTS - min_buffer_timeslots):
-            for next_ts in range(ts + 1, min(ts + 1 + min_buffer_timeslots, NUM_TIMESLOTS)):
-                # Als team actief is in ts, mag het niet actief zijn in next_ts
-                activity_at_ts = sum(matches[(team, ts, tb)] for tb in all_tables) + \
-                                sum(jury_sessions[(team, ts, jr)] for jr in all_jury_rooms)
-                activity_at_next = sum(matches[(team, next_ts, tb)] for tb in all_tables) + \
-                                  sum(jury_sessions[(team, next_ts, jr)] for jr in all_jury_rooms)
-                model.add(activity_at_ts + activity_at_next <= 1)
+        for ts in range(NUM_TIMESLOTS):
+            for gap in range(1, min_match_gap):
+                next_ts = ts + gap
+                if next_ts < NUM_TIMESLOTS:
+                    has_match_at_ts = sum(matches[(team, ts, tb)] for tb in all_tables)
+                    has_match_at_next = sum(matches[(team, next_ts, tb)] for tb in all_tables)
+                    model.add(has_match_at_ts + has_match_at_next <= 1)
+    
+    # 9. Buffer tijd tussen opeenvolgende jury sessies (als team meer dan 1 heeft)
+    if JURY_SESSIONS_PER_TEAM > 1:
+        print("   └─ Jury spacing...")
+        # Rond naar boven
+        min_jury_gap = (MINIMUM_BUFFER_TIME + JURY_DURATION - 1) // JURY_DURATION
+        for team in all_teams:
+            for ts in range(NUM_TIMESLOTS - min_jury_gap):
+                for next_ts in range(ts + 1, min(ts + 1 + min_jury_gap, NUM_TIMESLOTS)):
+                    has_jury_at_ts = sum(jury_sessions[(team, ts, jr)] for jr in all_jury_rooms)
+                    has_jury_at_next = sum(jury_sessions[(team, next_ts, jr)] for jr in all_jury_rooms)
+                    model.add(has_jury_at_ts + has_jury_at_next <= 1)
 
     # ===== OPTIMALISATIE =====
     
@@ -209,6 +259,7 @@ def build_json_output(result):
         "tableTimeslotList": [],
         "juryTimeslotList": [],
         "teamTableAllocationList": [],
+        "teamJuryAllocationList": [],
         "score": "0hard/0medium/0soft" if result['status'] == cp_model.OPTIMAL else "1hard/0medium/0soft"
     }
     
@@ -251,10 +302,17 @@ def build_json_output(result):
             })
             table_timeslot_id += 1
     
-    # Jury timeslots
+    # Jury timeslots - BELANGRIJK: deze moeten gesynchroniseerd zijn met match tijden!
+    # We maken jury slots die passen in het totale tijdschema
+    # Jury duurt 42 min, maar we plannen ze op dezelfde tijdschaal als matches
     jury_timeslot_id = 0
+    
+    # Bereken hoeveel "match tijdsloten" een jury sessie beslaat
+    jury_slots_in_match_units = (JURY_DURATION + MATCH_DURATION - 1) // MATCH_DURATION  # 42/7 = 6
+    
+    # Maak jury timeslots die gebaseerd zijn op match timing
     for ts in range(NUM_TIMESLOTS):
-        start_time_minutes = ts * JURY_DURATION
+        start_time_minutes = ts * MATCH_DURATION  # Zelfde tijdschaal als matches!
         for jury_id in range(NUM_JURY_ROOMS):
             output["juryTimeslotList"].append({
                 "id": jury_timeslot_id,
@@ -277,7 +335,6 @@ def build_json_output(result):
                     })
     
     # Team jury allocations
-    output["teamJuryAllocationList"] = []
     for team in range(NUM_TEAMS):
         for ts in range(NUM_TIMESLOTS):
             for jury_id in range(NUM_JURY_ROOMS):

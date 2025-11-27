@@ -15,8 +15,10 @@ document.getElementById('schedulerForm').addEventListener('submit', async (e) =>
         match_duration: document.getElementById('matchDuration').value,
         jury_duration: document.getElementById('juryDuration').value,
         buffer_time: document.getElementById('bufferTime').value,
-        break_enabled: document.getElementById('breakEnabled').value
+        break_enabled: document.getElementById('breakEnabled').value === 'true' ? 'Ja' : 'Nee'
     };
+    
+    console.log('Form data:', formData);
     
     createIssue(formData);
 });

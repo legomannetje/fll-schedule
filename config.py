@@ -6,13 +6,13 @@ Pas deze waarden aan voor jouw specifieke toernooi
 # ===== TOERNOOI INSTELLINGEN =====
 
 # Aantal tafels beschikbaar (4-10)
-NUM_TABLES = 6
+NUM_TABLES = 8
 
 # Aantal jury rooms beschikbaar (4-10)
-NUM_JURY_ROOMS = 8
+NUM_JURY_ROOMS = 7
 
 # Aantal teams (10-40)
-NUM_TEAMS = 40
+NUM_TEAMS = 45
 
 # Aantal wedstrijden per team (standaard 4 voor FLL)
 MATCHES_PER_TEAM = 4
@@ -32,7 +32,7 @@ MINIMUM_BUFFER_TIME = 30
 # Pauze tijdens het toernooi - wordt toegevoegd in de OUTPUT, niet als constraint
 BREAK_ENABLED = True  # Zet op False om pauze uit te schakelen
 BREAK_START_TIME = 168  # Start tijd van pauze in minuten (168 min = 2u48)
-BREAK_DURATION = 30  # Duur van de pauze in minuten
+BREAK_DURATION = 35  # Duur van de pauze in minuten (5 timeslots × 7 min = 35 min)
 # Alle activiteiten NA break_start_time krijgen +BREAK_DURATION minuten in de output
 
 # Tafel paren: deze tafels spelen samen (beide bezet of beide leeg)
@@ -48,7 +48,7 @@ TABLE_PAIRS = [
 ]
 
 # Aantal tijdsloten (auto-berekend of handmatig instellen)
-NUM_TIMESLOTS = 40  # Verhoog dit als er geen oplossing gevonden wordt
+NUM_TIMESLOTS = 50  # Verhoog dit als er geen oplossing gevonden wordt
 
 # Aantal jury sessies per team (standaard 1)
 JURY_SESSIONS_PER_TEAM = 1

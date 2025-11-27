@@ -5,7 +5,33 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # Maakt handmatig starten mogelijk
+  workflow_dispatch:  # Maakt handmatig starten mogelijk via UI of API
+    inputs:
+      num_teams:
+        description: 'Aantal teams (10-40)'
+        required: true
+        default: '40'
+        type: string
+      num_tables:
+        description: 'Aantal tafels (4-10)'
+        required: true
+        default: '6'
+        type: string
+      num_jury_rooms:
+        description: 'Aantal jury rooms (4-10)'
+        required: true
+        default: '8'
+        type: string
+      matches_per_team:
+        description: 'Wedstrijden per team'
+        required: true
+        default: '4'
+        type: string
+      num_timeslots:
+        description: 'Aantal tijdsloten'
+        required: true
+        default: '40'
+        type: string
 
 jobs:
   generate-and-test:
@@ -27,7 +53,12 @@ jobs:
     
     - name: Run scheduler
       run: |
-        python complete_scheduler.py
+        python run_scheduler_with_params.py \
+          --num-teams "${{ github.event.inputs.num_teams || '40' }}" \
+          --num-tables "${{ github.event.inputs.num_tables || '6' }}" \
+          --num-jury-rooms "${{ github.event.inputs.num_jury_rooms || '8' }}" \
+          --matches-per-team "${{ github.event.inputs.matches_per_team || '4' }}" \
+          --num-timeslots "${{ github.event.inputs.num_timeslots || '40' }}"
       continue-on-error: false
     
     - name: Find generated schedule

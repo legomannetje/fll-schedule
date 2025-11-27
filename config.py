@@ -41,6 +41,10 @@ TABLE_PAIRS = [
     (0, 1),  # Tafel 1 en 2
     (2, 3),  # Tafel 3 en 4
     (4, 5),  # Tafel 5 en 6
+    (6, 7),  # Tafel 7 en 8
+    (8, 9),  # Tafel 9 en 10
+    (10, 11),  # Tafel 11 en 12
+    (12, 13)  # Tafel 13 en 14
 ]
 
 # Aantal tijdsloten (auto-berekend of handmatig instellen)

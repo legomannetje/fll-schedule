@@ -1,0 +1,72 @@
+name: FLL Tournament Scheduler
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Maakt handmatig starten mogelijk
+
+jobs:
+  generate-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ortools numpy pandas
+    
+    - name: Run scheduler
+      run: |
+        python complete_scheduler.py
+      continue-on-error: false
+    
+    - name: Find generated schedule
+      id: find_schedule
+      run: |
+        SCHEDULE_FILE=$(ls -t schedule-complete-*.json | head -1)
+        echo "schedule_file=$SCHEDULE_FILE" >> $GITHUB_OUTPUT
+        echo "Found schedule: $SCHEDULE_FILE"
+    
+    - name: Run tests
+      run: |
+        python test_schedule.py ${{ steps.find_schedule.outputs.schedule_file }}
+    
+    - name: Upload schedule artifact
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: fll-schedule
+        path: schedule-complete-*.json
+        retention-days: 30
+    
+    - name: Display schedule summary
+      if: success()
+      run: |
+        echo "✅ Schedule generated successfully!"
+        python -c "
+        import json
+        import sys
+        
+        schedule_file = '${{ steps.find_schedule.outputs.schedule_file }}'
+        with open(schedule_file, 'r') as f:
+            data = json.load(f)
+        
+        print('\n📊 SCHEDULE SUMMARY')
+        print('=' * 60)
+        print(f'Teams: {len(data[\"teamList\"])}')
+        print(f'Tables: {len(data[\"tableList\"])}')
+        print(f'Jury Rooms: {len(data[\"juryList\"])}')
+        print(f'Total Matches: {len(data[\"teamTableAllocationList\"])}')
+        print(f'Total Jury Sessions: {len(data[\"teamJuryAllocationList\"])}')
+        print('=' * 60)
+        "
